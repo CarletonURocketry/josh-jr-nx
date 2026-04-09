@@ -25,8 +25,8 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
 #include <nuttx/compiler.h>
+#include <nuttx/config.h>
 
 #include <stdint.h>
 
@@ -36,65 +36,65 @@
 
 /* Configuration ************************************************************/
 
-#define HAVE_USBDEV          1
-#define HAVE_USBHOST         1
+#define HAVE_USBDEV 1
+#define HAVE_USBHOST 1
 
 /* procfs File System */
 
 #ifdef CONFIG_FS_PROCFS
-#  ifdef CONFIG_NSH_PROC_MOUNTPOINT
-#    define STM32_PROCFS_MOUNTPOINT CONFIG_NSH_PROC_MOUNTPOINT
-#  else
-#    define STM32_PROCFS_MOUNTPOINT "/proc"
-#  endif
+#ifdef CONFIG_NSH_PROC_MOUNTPOINT
+#define STM32_PROCFS_MOUNTPOINT CONFIG_NSH_PROC_MOUNTPOINT
+#else
+#define STM32_PROCFS_MOUNTPOINT "/proc"
+#endif
 #endif
 
 /* Can't support USB host or device features if USB OTG FS is not enabled */
 
 #ifndef CONFIG_STM32H7_OTGFS
-#  undef HAVE_USBDEV
-#  undef HAVE_USBHOST
+#undef HAVE_USBDEV
+#undef HAVE_USBHOST
 #endif
 
 /* Can't support USB device if USB device is not enabled */
 
 #ifndef CONFIG_USBDEV
-#  undef HAVE_USBDEV
+#undef HAVE_USBDEV
 #endif
 
 /* Can't support USB host is USB host is not enabled */
 
 #ifndef CONFIG_USBHOST
-#  undef HAVE_USBHOST
+#undef HAVE_USBHOST
 #endif
 
 /* Check if we should enable the USB monitor before starting NSH */
 
 #ifndef CONFIG_USBMONITOR
-#  undef HAVE_USBMONITOR
+#undef HAVE_USBMONITOR
 #endif
 
 #ifndef HAVE_USBDEV
-#  undef CONFIG_USBDEV_TRACE
+#undef CONFIG_USBDEV_TRACE
 #endif
 
 #ifndef HAVE_USBHOST
-#  undef CONFIG_USBHOST_TRACE
+#undef CONFIG_USBHOST_TRACE
 #endif
 
 #if !defined(CONFIG_USBDEV_TRACE) && !defined(CONFIG_USBHOST_TRACE)
-#  undef HAVE_USBMONITOR
+#undef HAVE_USBMONITOR
 #endif
 
 #if !defined(CONFIG_STM32H7_PROGMEM) || !defined(CONFIG_MTD_PROGMEM)
-#  undef HAVE_PROGMEM_CHARDEV
+#undef HAVE_PROGMEM_CHARDEV
 #endif
 
 /* Check if we can support the RTC driver */
 
 #define HAVE_RTC_DRIVER 1
 #if !defined(CONFIG_RTC) || !defined(CONFIG_RTC_DRIVER)
-#  undef HAVE_RTC_DRIVER
+#undef HAVE_RTC_DRIVER
 #endif
 
 /* LED
@@ -103,29 +103,52 @@
  *   - Started: Green LED to indicate startup
  *   - Panic: Red LED to indicate panic state
  *   - Eject: Green LED to indicate when SD card can be removed safely
- *   - SD Eject: Green LED to indicate when SD card can be removed safely, controllable from user space
+ *   - SD Eject: Green LED to indicate when SD card can be removed safely,
+ * controllable from user space
  */
 
-#define GPIO_LED_STARTED (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | \
-                          GPIO_OUTPUT_CLEAR | GPIO_PORTA | GPIO_PIN4)
-#define GPIO_LED_PANIC   (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | \
-                          GPIO_OUTPUT_CLEAR | GPIO_PORTA | GPIO_PIN5)
-#define GPIO_LED_EJECT   (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | \
-                          GPIO_OUTPUT_CLEAR | GPIO_PORTD | GPIO_PIN3)
+#define GPIO_LED_STARTED                                                       \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_CLEAR |        \
+   GPIO_PORTC | GPIO_PIN0)
+#define GPIO_LED_PANIC                                                         \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_CLEAR |        \
+   GPIO_PORTC | GPIO_PIN1)
+#define GPIO_LED_EJECT                                                         \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_CLEAR |        \
+   GPIO_PORTD | GPIO_PIN3)
 
-#define BOARD_NGPIOOUT    1 /* Amount of GPIO Output pins */
-#define GPIO_LED_SD_EJECT (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | \
-                          GPIO_OUTPUT_SET | GPIO_PORTD | GPIO_PIN3)
+#define BOARD_NGPIOOUT 1 /* Amount of GPIO Output pins */
+#define GPIO_LED_SD_EJECT                                                      \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_SET |          \
+   GPIO_PORTD | GPIO_PIN3)
+
+/* SPI chip select pins */
+
+#define GPIO_SPI1_CS_IMU                                                       \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_SET |          \
+   GPIO_PORTA | GPIO_PIN4)
+
+#define GPIO_SPI3_CS_MAG                                                       \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_SET |          \
+   GPIO_PORTA | GPIO_PIN15)
+
+#define GPIO_SPI2_CS0                                                          \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_SET |          \
+   GPIO_PORTB | GPIO_PIN12)
+
+#define GPIO_SPI4_CS0                                                          \
+  (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_50MHz | GPIO_OUTPUT_SET |          \
+   GPIO_PORTE | GPIO_PIN11)
 
 /* IMU interrupt pins */
 
 #define GPIO_XL_INT                                                            \
   (GPIO_INPUT | GPIO_FLOAT | GPIO_EXTI | GPIO_SPEED_100MHz | GPIO_PORTE |      \
-   GPIO_PIN0)
+   GPIO_PIN8)
 
 #define GPIO_GY_INT                                                            \
   (GPIO_INPUT | GPIO_FLOAT | GPIO_EXTI | GPIO_SPEED_100MHz | GPIO_PORTE |      \
-   GPIO_PIN1)
+   GPIO_PIN7)
 
 /* Magnetometer interrupt pin */
 
@@ -161,11 +184,11 @@
 #define GPIO_ADC12_INP4 GPIO_ADC12_INP4_0 /* PC4, channle 4 */
 
 #if defined(CONFIG_DISABLE_MOUNTPOINT) || !defined(CONFIG_MMCSD_SDIO)
-#  undef HAVE_SDIO
+#undef HAVE_SDIO
 #endif
 
-#define SDIO_SLOTNO        0
-#define SDIO_MINOR         0
+#define SDIO_SLOTNO 0
+#define SDIO_MINOR 0
 
 /****************************************************************************
  * Public Function Prototypes
@@ -187,6 +210,10 @@
  ****************************************************************************/
 
 int stm32_bringup(void);
+
+#ifdef CONFIG_STM32H7_SPI
+void stm32_spidev_initialize(void);
+#endif
 
 /****************************************************************************
  * Name: stm32_sdio_initialize

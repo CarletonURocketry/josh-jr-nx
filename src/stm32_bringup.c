@@ -40,32 +40,21 @@
 #include "stm32_gpio.h"
 #include "stm32_sdmmc.h"
 
-#if defined(CONFIG_SENSORS_MS56XX)
-#include "stm32_i2c.h"
-#include <nuttx/sensors/ms56xx.h>
-#endif
+#include "stm32_spi.h"
+#include <nuttx/spi/spi.h>
+#include <nuttx/spi/spi_transfer.h>
 
 #if defined(CONFIG_SENSORS_LSM6DSO32)
-#include "stm32_i2c.h"
 #include <nuttx/sensors/lsm6dso32.h>
 #endif
 
 #if defined(CONFIG_SENSORS_LIS2MDL)
-#include "stm32_i2c.h"
 #include <nuttx/sensors/lis2mdl.h>
-#endif
-
-#if defined(CONFIG_SENSORS_L86_XXX)
-#include <nuttx/sensors/l86xxx.h>
 #endif
 
 #if defined(CONFIG_I2C_EE_24XX)
 #include "stm32_i2c.h"
 #include <nuttx/eeprom/i2c_xx24xx.h>
-#endif
-
-#ifdef CONFIG_LPWAN_RN2XX3
-#include <nuttx/wireless/lpwan/rn2xx3.h>
 #endif
 
 #ifdef CONFIG_PWM
@@ -244,6 +233,19 @@ static void stm32_i2ctool(void) {
 int stm32_bringup(void) {
   int ret = OK;
 
+  /* SPI device drivers */
+
+#ifdef CONFIG_STM32H7_SPI
+  stm32_spidev_initialize();
+#endif
+
+#ifdef CONFIG_SPI_DRIVER
+  spi_register(stm32_spibus_initialize(1), 1);
+  spi_register(stm32_spibus_initialize(2), 2);
+  spi_register(stm32_spibus_initialize(3), 3);
+  spi_register(stm32_spibus_initialize(4), 4);
+#endif
+
   /* I2C device drivers */
 
 #if defined(CONFIG_I2C) && defined(CONFIG_SYSTEM_I2CTOOL)
@@ -252,89 +254,54 @@ int stm32_bringup(void) {
 
   /* EEPROM on I2C */
 
-#if defined(CONFIG_I2C_EE_24XX)
-  ret = ee24xx_initialize(stm32_i2cbus_initialize(2), 0x50, "/dev/eeprom",
-                          EEPROM_M24C32, false);
-  if (ret < 0) {
-    syslog(LOG_ERR, "Could not register EEPROM driver: %d.\n", ret);
-  }
-#endif
+  // #if defined(CONFIG_I2C_EE_24XX)
+  //   ret = ee24xx_initialize(stm32_i2cbus_initialize(2), 0x50, "/dev/eeprom",
+  //                           EEPROM_M24C32, false);
+  //   if (ret < 0) {
+  //     syslog(LOG_ERR, "Could not register EEPROM driver: %d.\n", ret);
+  //   }
+  // #endif
 
   /* Sensor drivers */
 
-#if defined(CONFIG_SENSORS_MS56XX)
-  /* MS56XX at 0x76 on I2C bus 1 */
-
-  ret = ms56xx_register(stm32_i2cbus_initialize(1), 0, MS56XX_ADDR1,
-                        MS56XX_MODEL_MS5607);
-  if (ret < 0) {
-    syslog(LOG_ERR, "Failed to register MS5607: %d\n", ret);
-  }
-#endif /* defined(CONFIG_SENSORS_MS56XX) */
-
 #if defined(CONFIG_SENSORS_LSM6DSO32)
-  /* Register LSM6DSO32 IMU at 0x6a on I2C1 */
+  /* Register LSM6DSO32 IMU on SPI1, CS=PA4 */
 
-  /* Only use interrupt driven mode if HPWORK is enabled */
-
+  struct lsm6dso32_bus_config_s lsm6dso32_bus = {
+      .spi = stm32_spibus_initialize(1),
+      .spi_devid = SPIDEV_USER(0),
+  };
   struct lsm6dso32_config_s lsm6dso32_config = {
       .xl_int = LSM6DSO32_INT1,
       .gy_int = LSM6DSO32_INT2,
-  };
-
 #ifdef CONFIG_SCHED_HPWORK
-  lsm6dso32_config.gy_attach = josh_lsm6dso32_gy_attach;
-  lsm6dso32_config.xl_attach = josh_lsm6dso32_xl_attach;
+      .gy_attach = josh_lsm6dso32_gy_attach,
+      .xl_attach = josh_lsm6dso32_xl_attach,
 #else
-  lsm6dso32_config.gy_attach = NULL;
-  lsm6dso32_config.xl_attach = NULL;
-#endif /* CONFIG_SCHED_HPWORK */
-
-  ret = lsm6dso32_register(stm32_i2cbus_initialize(1), 0x6a, 0,
-                           &lsm6dso32_config);
+      .gy_attach = NULL,
+      .xl_attach = NULL,
+#endif
+  };
+  ret = lsm6dso32_register(&lsm6dso32_bus, 0, &lsm6dso32_config);
   if (ret < 0) {
     syslog(LOG_ERR, "Failed to register LSM6DSO32: %d\n", ret);
   }
 #endif /* defined(CONFIG_SENSORS_LSM6DSO32) */
 
 #if defined(CONFIG_SENSORS_LIS2MDL)
-  /* Register LIS2MDL at 0x1e on I2C1 */
+  /* Register LIS2MDL on SPI3, CS=PA15 */
 
-#ifndef CONFIG_SCHED_HPWORK
-  ret = lis2mdl_register(stm32_i2cbus_initialize(1), 0, 0x1e, NULL);
+  struct lis2mdl_config_s lis2mdl_cfg = {
+      .spi = stm32_spibus_initialize(3),
+      .spi_devid = SPIDEV_USER(0),
+  };
+#ifdef CONFIG_SCHED_HPWORK
+  ret = lis2mdl_register(&lis2mdl_cfg, 0, &josh_lis2mdl_attach);
 #else
-  ret = lis2mdl_register(stm32_i2cbus_initialize(1), 0, 0x1e,
-                         &josh_lis2mdl_attach);
-#endif /* CONFIG_SCHED_HPWORK */
+  ret = lis2mdl_register(&lis2mdl_cfg, 0, NULL);
+#endif
   if (ret < 0) {
     syslog(LOG_ERR, "Failed to register LIS2MDL: %d\n", ret);
-  }
-#endif
-
-#if defined(CONFIG_SENSORS_L86_XXX)
-  /* Register L86-M33 on USART3 */
-
-  ret = l86xxx_register("/dev/ttyS2", 0);
-  if (ret < 0) {
-    syslog(LOG_ERR, "Failed to register L86-M33: %d\n", ret);
-  }
-#endif
-
-#ifdef CONFIG_LPWAN_RN2XX3
-
-#if CONFIG_USART2_BAUD != 57600
-#error "CONFIG_USART2_BAUD must be set to 57600 for RN2XX3"
-#endif
-
-#ifndef CONFIG_STANDARD_SERIAL
-#error "CONFIG_STANDARD_SERIAL must be enabled for RN2XX3"
-#endif /* CONFIG_STANDARD_SERIAL */
-
-  /* Register the RN2XX3 device driver */
-
-  ret = rn2xx3_register("/dev/rn2483", "/dev/ttyS1");
-  if (ret < 0) {
-    syslog(LOG_ERR, "Failed to register RN2XX3 device driver: %d\n", ret);
   }
 #endif
 
@@ -399,7 +366,7 @@ int stm32_bringup(void) {
   }
 #endif
 
-#ifdef CONFIG_DEV_GPIO  
+#ifdef CONFIG_DEV_GPIO
   stm32_dev_gpio_init();
 #endif
 
