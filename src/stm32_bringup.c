@@ -65,6 +65,10 @@
 #include "stm32_adc.h"
 #endif
 
+#if defined(CONFIG_SENSORS_UBXM10)
+#include <nuttx/sensors/ubxm10.h>
+#endif
+
 /****************************************************************************
  * Pre-processor Directives
  ****************************************************************************/
@@ -302,6 +306,16 @@ int stm32_bringup(void) {
 #endif
   if (ret < 0) {
     syslog(LOG_ERR, "Failed to register LIS2MDL: %d\n", ret);
+  }
+#endif
+
+/* GPS Init */
+#if defined(CONFIG_SENSORS_UBXM10)
+  /* Register UBX-M10 on USART3 */
+
+  ret = ubxm10_register("/dev/ttyS2", 0);
+  if (ret < 0) {
+    syslog(LOG_ERR, "Failed to register UBX-M10: %d\n", ret);
   }
 #endif
 
