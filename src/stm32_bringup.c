@@ -309,6 +309,16 @@ int stm32_bringup(void) {
   }
 #endif
 
+/* GPS Init */
+#if defined(CONFIG_SENSORS_UBXM10)
+  /* Register UBX-M10 on USART3 */
+
+  ret = ubxm10_register("/dev/ttyS2", 0);
+  if (ret < 0) {
+    syslog(LOG_ERR, "Failed to register UBX-M10: %d\n", ret);
+  }
+#endif
+
 #ifdef CONFIG_FS_PROCFS
   /* Mount the procfs file system */
 
@@ -361,16 +371,6 @@ int stm32_bringup(void) {
     return ret;
   }
 
-#endif
-
-
-#if defined(CONFIG_SENSORS_UBXM10)
-  /* Register UBX-M10 on USART3 */
-
-  ret = ubxm10_register("/dev/ttyS2", 0);
-  if (ret < 0) {
-    syslog(LOG_ERR, "Failed to register UBX-M10: %d\n", ret);
-  }
 #endif
 
 #ifdef CONFIG_PWM
